@@ -1,0 +1,160 @@
+--[[
+    Nic Script - Universal Roblox Script
+    Features: Jump Power, Speed, and Noclip
+    UI Library: Rayfield
+]]--
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Nic Script",
+   LoadingTitle = "Nic Script Loading...",
+   LoadingSubtitle = "by Delta Executor",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "NicScript"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false,
+   KeySettings = {
+      Title = "Nic Script",
+      Subtitle = "Key System",
+      Note = "No key needed",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"Hello"}
+   }
+})
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+local Section = MainTab:CreateSection("Character Modifications")
+
+-- Variables
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- Noclip Variables
+local NoclipEnabled = false
+local NoclipConnection
+
+-- Update character reference on respawn
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    
+    -- Reapply noclip if it was enabled
+    if NoclipEnabled then
+        NoclipEnabled = false
+        -- The toggle will handle re-enabling
+    end
+end)
+
+-- Jump Power Slider
+local JumpPowerSlider = MainTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 500},
+   Increment = 10,
+   Suffix = "Power",
+   CurrentValue = 50,
+   Flag = "JumpPowerSlider",
+   Callback = function(Value)
+        if Character and Humanoid then
+            Humanoid.JumpPower = Value
+        end
+   end,
+})
+
+-- Speed Slider
+local SpeedSlider = MainTab:CreateSlider({
+   Name = "Walk Speed",
+   Range = {16, 200},
+   Increment = 2,
+   Suffix = "Speed",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+        if Character and Humanoid then
+            Humanoid.WalkSpeed = Value
+        end
+   end,
+})
+
+-- Noclip Function
+local function Noclip()
+    if Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
+-- Noclip Toggle
+local NoclipToggle = MainTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Flag = "NoclipToggle",
+   Callback = function(Value)
+        NoclipEnabled = Value
+        
+        if NoclipEnabled then
+            -- Start noclip loop
+            NoclipConnection = RunService.Stepped:Connect(function()
+                if NoclipEnabled then
+                    Noclip()
+                end
+            end)
+            
+            Rayfield:Notify({
+               Title = "Noclip Activated",
+               Content = "You can now walk through walls!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            -- Stop noclip and restore collision
+            if NoclipConnection then
+                NoclipConnection:Disconnect()
+            end
+            
+            if Character then
+                for _, part in pairs(Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+            
+            Rayfield:Notify({
+               Title = "Noclip Deactivated",
+               Content = "Collision restored",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Info Section
+local InfoSection = MainTab:CreateSection("Info")
+
+MainTab:CreateLabel("Nic Script v1.0 - Universal")
+MainTab:CreateLabel("Made for Delta Executor")
+
+-- Notification on load
+Rayfield:Notify({
+   Title = "Nic Script Loaded",
+   Content = "All features ready to use!",
+   Duration = 5,
+   Image = 4483362458,
+})
