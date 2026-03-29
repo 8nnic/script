@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 1.2
-    Features: Jump Power, Speed, Noclip, Fly, ESP, Tools, and Coordinates
+    Version: 1.4
+    Features: Jump Power, Speed, Noclip, Fly (Mobile Support), ESP, Tools, Coordinates, Infinite Jump, Click TP, and X-Ray
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v1.2",
+   Name = "Nic Script v1.4",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "Join Our Server!",
+   LoadingSubtitle = "Made For Most Executors!",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -48,6 +48,7 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Mouse = LocalPlayer:GetMouse()
 
 -- Noclip Variables
 local NoclipEnabled = false
@@ -56,9 +57,9 @@ local NoclipConnection
 -- Fly Variables
 local FlyEnabled = false
 local FlySpeed = 50
-local BodyVelocity
-local BodyGyro
-local FlyConnection
+local Flying = false
+local FlyConnection = nil
+local MobileControls = nil
 
 -- ESP Variables
 local ESPEnabled = false
@@ -67,11 +68,21 @@ local ESPObjects = {}
 -- Jump Variables
 local CurrentJumpPower = 50
 local CurrentWalkSpeed = 16
+local InfiniteJumpEnabled = false
+local InfiniteJumpConnection = nil
 
 -- Coordinate Variables
 local CoordinateGui = nil
 local CoordinateEnabled = false
 local CoordinateConnection = nil
+
+-- Click TP Variables
+local ClickTPEnabled = false
+local ClickTPConnection = nil
+
+-- X-Ray Variables
+local XRayEnabled = false
+local OriginalTransparencies = {}
 
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
@@ -107,14 +118,20 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     -- Reapply fly if it was enabled
     if FlyEnabled then
         FlyEnabled = false
+        Flying = false
+    end
+    
+    -- Reapply infinite jump if it was enabled
+    if InfiniteJumpEnabled then
+        InfiniteJumpEnabled = false
     end
 end)
 
 -- Jump Power Slider
 local JumpPowerSlider = MainTab:CreateSlider({
    Name = "Jump Power",
-   Range = {50, 500},
-   Increment = 10,
+   Range = {50, 1000},
+   Increment = 25,
    Suffix = "Power",
    CurrentValue = 50,
    Flag = "JumpPowerSlider",
@@ -127,8 +144,8 @@ local JumpPowerSlider = MainTab:CreateSlider({
 -- Speed Slider
 local SpeedSlider = MainTab:CreateSlider({
    Name = "Walk Speed",
-   Range = {16, 200},
-   Increment = 2,
+   Range = {16, 500},
+   Increment = 10,
    Suffix = "Speed",
    CurrentValue = 16,
    Flag = "SpeedSlider",
@@ -143,8 +160,8 @@ local SpeedSlider = MainTab:CreateSlider({
 -- Fly Speed Slider
 local FlySpeedSlider = MainTab:CreateSlider({
    Name = "Fly Speed",
-   Range = {10, 200},
-   Increment = 5,
+   Range = {10, 500},
+   Increment = 10,
    Suffix = "Speed",
    CurrentValue = 50,
    Flag = "FlySpeedSlider",
@@ -164,70 +181,169 @@ local function Noclip()
     end
 end
 
--- Fly Function
+-- IMPROVED FLY SYSTEM WITH MOBILE SUPPORT
+local function CreateMobileControls()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Remove existing controls
+    local existingControls = playerGui:FindFirstChild("NicScriptFlyControls")
+    if existingControls then
+        existingControls:Destroy()
+    end
+    
+    -- Create ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "NicScriptFlyControls"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+    
+    -- Up Button
+    local upButton = Instance.new("TextButton")
+    upButton.Size = UDim2.new(0, 60, 0, 60)
+    upButton.Position = UDim2.new(1, -80, 0.5, -130)
+    upButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    upButton.Text = "UP"
+    upButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    upButton.Font = Enum.Font.SourceSansBold
+    upButton.TextSize = 20
+    upButton.Parent = screenGui
+    
+    local upCorner = Instance.new("UICorner")
+    upCorner.CornerRadius = UDim.new(0, 10)
+    upCorner.Parent = upButton
+    
+    -- Down Button
+    local downButton = Instance.new("TextButton")
+    downButton.Size = UDim2.new(0, 60, 0, 60)
+    downButton.Position = UDim2.new(1, -80, 0.5, 70)
+    downButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    downButton.Text = "DOWN"
+    downButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    downButton.Font = Enum.Font.SourceSansBold
+    downButton.TextSize = 16
+    downButton.Parent = screenGui
+    
+    local downCorner = Instance.new("UICorner")
+    downCorner.CornerRadius = UDim.new(0, 10)
+    downCorner.Parent = downButton
+    
+    MobileControls = screenGui
+    
+    return upButton, downButton
+end
+
 local function StartFly()
     if not HumanoidRootPart then return end
     
-    -- Create BodyVelocity
-    BodyVelocity = Instance.new("BodyVelocity")
-    BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    BodyVelocity.Parent = HumanoidRootPart
+    Flying = true
     
-    -- Create BodyGyro
-    BodyGyro = Instance.new("BodyGyro")
-    BodyGyro.P = 9e4
-    BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    BodyGyro.CFrame = HumanoidRootPart.CFrame
-    BodyGyro.Parent = HumanoidRootPart
+    -- Disable gravity
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = HumanoidRootPart
+    
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "FlyGyro"
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.P = 9e4
+    bodyGyro.Parent = HumanoidRootPart
+    
+    -- Mobile controls
+    local upButton, downButton = CreateMobileControls()
+    local mobileUp = false
+    local mobileDown = false
+    
+    upButton.MouseButton1Down:Connect(function()
+        mobileUp = true
+    end)
+    
+    upButton.MouseButton1Up:Connect(function()
+        mobileUp = false
+    end)
+    
+    downButton.MouseButton1Down:Connect(function()
+        mobileDown = true
+    end)
+    
+    downButton.MouseButton1Up:Connect(function()
+        mobileDown = false
+    end)
     
     -- Fly loop
     FlyConnection = RunService.Heartbeat:Connect(function()
-        if not FlyEnabled or not HumanoidRootPart or not BodyVelocity or not BodyGyro then return end
+        if not Flying or not FlyEnabled or not HumanoidRootPart then return end
         
-        local Camera = workspace.CurrentCamera
-        local MoveDirection = Vector3.new(0, 0, 0)
+        local bv = HumanoidRootPart:FindFirstChild("FlyVelocity")
+        local bg = HumanoidRootPart:FindFirstChild("FlyGyro")
         
-        -- Get input
+        if not bv or not bg then return end
+        
+        local camera = workspace.CurrentCamera
+        local direction = Vector3.new(0, 0, 0)
+        
+        -- Keyboard controls
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            MoveDirection = MoveDirection + (Camera.CFrame.LookVector)
+            direction = direction + camera.CFrame.LookVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            MoveDirection = MoveDirection - (Camera.CFrame.LookVector)
+            direction = direction - camera.CFrame.LookVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            MoveDirection = MoveDirection - (Camera.CFrame.RightVector)
+            direction = direction - camera.CFrame.RightVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            MoveDirection = MoveDirection + (Camera.CFrame.RightVector)
+            direction = direction + camera.CFrame.RightVector
         end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            MoveDirection = MoveDirection + Vector3.new(0, 1, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or mobileUp then
+            direction = direction + Vector3.new(0, 1, 0)
         end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            MoveDirection = MoveDirection - Vector3.new(0, 1, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or mobileDown then
+            direction = direction - Vector3.new(0, 1, 0)
         end
         
-        -- Apply velocity
-        BodyVelocity.Velocity = MoveDirection * FlySpeed
-        BodyGyro.CFrame = Camera.CFrame
+        -- Mobile thumbstick support
+        local moveVector = Humanoid.MoveVector
+        if moveVector.Magnitude > 0 then
+            local moveDirection = (camera.CFrame.LookVector * moveVector.Z) + (camera.CFrame.RightVector * moveVector.X)
+            direction = direction + moveDirection
+        end
+        
+        bv.Velocity = direction * FlySpeed
+        bg.CFrame = camera.CFrame
+        
+        -- Keep humanoid in "flying" state
+        Humanoid.PlatformStand = true
     end)
 end
 
 local function StopFly()
+    Flying = false
+    
     if FlyConnection then
         FlyConnection:Disconnect()
         FlyConnection = nil
     end
     
-    if BodyVelocity then
-        BodyVelocity:Destroy()
-        BodyVelocity = nil
+    -- Remove mobile controls
+    if MobileControls then
+        MobileControls:Destroy()
+        MobileControls = nil
     end
     
-    if BodyGyro then
-        BodyGyro:Destroy()
-        BodyGyro = nil
+    -- Remove fly objects
+    if HumanoidRootPart then
+        local bv = HumanoidRootPart:FindFirstChild("FlyVelocity")
+        if bv then bv:Destroy() end
+        
+        local bg = HumanoidRootPart:FindFirstChild("FlyGyro")
+        if bg then bg:Destroy() end
+    end
+    
+    -- Restore normal state
+    if Humanoid then
+        Humanoid.PlatformStand = false
     end
 end
 
@@ -290,8 +406,8 @@ local FlyToggle = MainTab:CreateToggle({
             
             Rayfield:Notify({
                Title = "Fly Activated",
-               Content = "Use WASD + Space/Shift to fly!",
-               Duration = 3,
+               Content = "PC: WASD + Space/Shift | Mobile: Use buttons!",
+               Duration = 4,
                Image = 4483362458,
             })
         else
@@ -300,6 +416,52 @@ local FlyToggle = MainTab:CreateToggle({
             Rayfield:Notify({
                Title = "Fly Deactivated",
                Content = "Fly mode disabled",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INFINITE JUMP
+local function EnableInfiniteJump()
+    InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+        if InfiniteJumpEnabled and Humanoid then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+end
+
+local function DisableInfiniteJump()
+    if InfiniteJumpConnection then
+        InfiniteJumpConnection:Disconnect()
+        InfiniteJumpConnection = nil
+    end
+end
+
+-- Infinite Jump Toggle
+local InfiniteJumpToggle = MainTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfiniteJumpToggle",
+   Callback = function(Value)
+        InfiniteJumpEnabled = Value
+        
+        if InfiniteJumpEnabled then
+            EnableInfiniteJump()
+            
+            Rayfield:Notify({
+               Title = "Infinite Jump Activated",
+               Content = "Jump as many times as you want!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInfiniteJump()
+            
+            Rayfield:Notify({
+               Title = "Infinite Jump Deactivated",
+               Content = "Normal jumping restored",
                Duration = 3,
                Image = 4483362458,
             })
@@ -452,6 +614,74 @@ local ESPToggle = VisualsTab:CreateToggle({
    end,
 })
 
+-- X-RAY / TRANSPARENT BLOCKS SECTION
+local XRaySection = VisualsTab:CreateSection("X-Ray Vision")
+
+local function EnableXRay()
+    OriginalTransparencies = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Parent ~= Character and not obj.Parent:FindFirstChild("Humanoid") then
+            -- Store original transparency
+            if not OriginalTransparencies[obj] then
+                OriginalTransparencies[obj] = obj.Transparency
+            end
+            
+            -- Make transparent
+            obj.Transparency = 0.7
+        end
+    end
+    
+    -- Handle new parts being added
+    workspace.DescendantAdded:Connect(function(obj)
+        if XRayEnabled and obj:IsA("BasePart") and obj.Parent ~= Character and not obj.Parent:FindFirstChild("Humanoid") then
+            OriginalTransparencies[obj] = obj.Transparency
+            obj.Transparency = 0.7
+        end
+    end)
+end
+
+local function DisableXRay()
+    -- Restore original transparencies
+    for obj, originalTransparency in pairs(OriginalTransparencies) do
+        if obj and obj.Parent then
+            obj.Transparency = originalTransparency
+        end
+    end
+    
+    OriginalTransparencies = {}
+end
+
+-- X-Ray Toggle
+local XRayToggle = VisualsTab:CreateToggle({
+   Name = "X-Ray (Transparent Blocks)",
+   CurrentValue = false,
+   Flag = "XRayToggle",
+   Callback = function(Value)
+        XRayEnabled = Value
+        
+        if XRayEnabled then
+            EnableXRay()
+            
+            Rayfield:Notify({
+               Title = "X-Ray Activated",
+               Content = "All blocks are now transparent!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableXRay()
+            
+            Rayfield:Notify({
+               Title = "X-Ray Deactivated",
+               Content = "Blocks restored to normal!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- FUN TAB
 local FunSection = FunTab:CreateSection("Tools & Items")
 
@@ -502,28 +732,6 @@ local function GiveSword()
     guardWeld.Part1 = guard
     guardWeld.C0 = CFrame.new(0, 0.5, 0)
     guardWeld.Parent = handle
-    
-    -- Damage script
-    local damageScript = Instance.new("Script")
-    damageScript.Source = [[
-        local tool = script.Parent
-        local damage = 25
-        
-        tool.Activated:Connect(function()
-            local character = tool.Parent
-            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-            if not humanoidRootPart then return end
-            
-            local touchedParts = {}
-            for _, part in pairs(workspace:GetPartBoundsInRadius(humanoidRootPart.Position, 10)) do
-                local humanoid = part.Parent:FindFirstChild("Humanoid")
-                if humanoid and part.Parent ~= character then
-                    humanoid:TakeDamage(damage)
-                end
-            end
-        end)
-    ]]
-    damageScript.Parent = sword
     
     sword.Parent = LocalPlayer.Backpack
     
@@ -625,6 +833,79 @@ local RemoveCarpetButton = FunTab:CreateButton({
    Name = "Remove Rainbow Carpet",
    Callback = function()
         RemoveRainbowCarpet()
+   end,
+})
+
+-- CLICK TELEPORT SECTION
+local ClickTPSection = FunTab:CreateSection("Click Teleport")
+
+local function EnableClickTP()
+    ClickTPConnection = Mouse.Button1Down:Connect(function()
+        if not ClickTPEnabled then return end
+        
+        local target = Mouse.Target
+        if target and HumanoidRootPart then
+            -- Teleport to mouse position
+            HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
+            
+            -- Visual effect at teleport location
+            local effect = Instance.new("Part")
+            effect.Shape = Enum.PartType.Ball
+            effect.Size = Vector3.new(2, 2, 2)
+            effect.Material = Enum.Material.Neon
+            effect.Color = Color3.fromRGB(0, 255, 255)
+            effect.Anchored = true
+            effect.CanCollide = false
+            effect.Transparency = 0.5
+            effect.Position = Mouse.Hit.Position
+            effect.Parent = workspace
+            
+            -- Fade out effect
+            for i = 0.5, 1, 0.1 do
+                effect.Transparency = i
+                effect.Size = effect.Size + Vector3.new(0.5, 0.5, 0.5)
+                wait(0.05)
+            end
+            
+            effect:Destroy()
+        end
+    end)
+end
+
+local function DisableClickTP()
+    if ClickTPConnection then
+        ClickTPConnection:Disconnect()
+        ClickTPConnection = nil
+    end
+end
+
+-- Click TP Toggle
+local ClickTPToggle = FunTab:CreateToggle({
+   Name = "Click Teleport",
+   CurrentValue = false,
+   Flag = "ClickTPToggle",
+   Callback = function(Value)
+        ClickTPEnabled = Value
+        
+        if ClickTPEnabled then
+            EnableClickTP()
+            
+            Rayfield:Notify({
+               Title = "Click TP Activated",
+               Content = "Click anywhere to teleport!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableClickTP()
+            
+            Rayfield:Notify({
+               Title = "Click TP Deactivated",
+               Content = "Click teleport disabled!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
    end,
 })
 
@@ -763,12 +1044,12 @@ local CoordinateToggle = FunTab:CreateToggle({
 -- Info Section
 local InfoSection = MainTab:CreateSection("Info")
 
-MainTab:CreateLabel("Nic Script v1.2 - Universal")
+MainTab:CreateLabel("Nic Script v1.4 - Universal")
 MainTab:CreateLabel("Made for Delta Executor")
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v1.2 Loaded",
+   Title = "Nic Script v1.4 Loaded",
    Content = "All features ready to use!",
    Duration = 5,
    Image = 4483362458,
