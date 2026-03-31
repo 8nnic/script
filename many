@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 1.4
-    Features: Jump Power, Speed, Noclip, Fly (Mobile Support), ESP, Tools, Coordinates, Infinite Jump, Click TP, and X-Ray
+    Version: 1.5
+    Features: Invisibility, NPC ESP, Underground Mode, Force Field, Instant Interact, Click TP, X-Ray, and more!
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v1.4",
+   Name = "Nic Script v1.5",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "Made For Most Executors!",
+   LoadingSubtitle = "by Delta Executor",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -37,6 +37,7 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 local VisualsTab = Window:CreateTab("Visuals", 4483362458)
 local FunTab = Window:CreateTab("Fun", 4483362458)
+local InfoTab = Window:CreateTab("Info", 4483362458)
 
 local Section = MainTab:CreateSection("Character Modifications")
 
@@ -65,6 +66,10 @@ local MobileControls = nil
 local ESPEnabled = false
 local ESPObjects = {}
 
+-- NPC ESP Variables
+local NPCESPEnabled = false
+local NPCESPObjects = {}
+
 -- Jump Variables
 local CurrentJumpPower = 50
 local CurrentWalkSpeed = 16
@@ -83,6 +88,17 @@ local ClickTPConnection = nil
 -- X-Ray Variables
 local XRayEnabled = false
 local OriginalTransparencies = {}
+
+-- Invisibility Variables
+local InvisibilityEnabled = false
+local OriginalCharacterParts = {}
+
+-- Force Field Variable
+local ForceFieldObject = nil
+
+-- Instant Interact Variables
+local InstantInteractEnabled = false
+local OriginalProximityPrompts = {}
 
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
@@ -124,6 +140,11 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     -- Reapply infinite jump if it was enabled
     if InfiniteJumpEnabled then
         InfiniteJumpEnabled = false
+    end
+    
+    -- Reapply invisibility if it was enabled
+    if InvisibilityEnabled then
+        InvisibilityEnabled = false
     end
 end)
 
@@ -469,6 +490,170 @@ local InfiniteJumpToggle = MainTab:CreateToggle({
    end,
 })
 
+-- INVISIBILITY TOGGLE
+local function EnableInvisibility()
+    OriginalCharacterParts = {}
+    
+    for _, part in pairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            OriginalCharacterParts[part] = part.Transparency
+            part.Transparency = 1
+        end
+        
+        if part:IsA("Accessory") then
+            local handle = part:FindFirstChild("Handle")
+            if handle then
+                OriginalCharacterParts[handle] = handle.Transparency
+                handle.Transparency = 1
+            end
+        end
+    end
+    
+    -- Hide face
+    if Character:FindFirstChild("Head") then
+        local face = Character.Head:FindFirstChild("face")
+        if face then
+            OriginalCharacterParts[face] = face.Transparency
+            face.Transparency = 1
+        end
+    end
+end
+
+local function DisableInvisibility()
+    for part, transparency in pairs(OriginalCharacterParts) do
+        if part and part.Parent then
+            part.Transparency = transparency
+        end
+    end
+    
+    OriginalCharacterParts = {}
+end
+
+-- Invisibility Toggle
+local InvisibilityToggle = MainTab:CreateToggle({
+   Name = "Invisibility",
+   CurrentValue = false,
+   Flag = "InvisibilityToggle",
+   Callback = function(Value)
+        InvisibilityEnabled = Value
+        
+        if InvisibilityEnabled then
+            EnableInvisibility()
+            
+            Rayfield:Notify({
+               Title = "Invisibility Activated",
+               Content = "You are now invisible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInvisibility()
+            
+            Rayfield:Notify({
+               Title = "Invisibility Deactivated",
+               Content = "You are now visible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- FORCE FIELD TOGGLE
+local ForceFieldToggle = MainTab:CreateToggle({
+   Name = "Force Field",
+   CurrentValue = false,
+   Flag = "ForceFieldToggle",
+   Callback = function(Value)
+        if Value then
+            -- Create Force Field
+            ForceFieldObject = Instance.new("ForceField")
+            ForceFieldObject.Visible = true
+            ForceFieldObject.Parent = Character
+            
+            Rayfield:Notify({
+               Title = "Force Field Activated",
+               Content = "You are now protected!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            -- Remove Force Field
+            if ForceFieldObject then
+                ForceFieldObject:Destroy()
+                ForceFieldObject = nil
+            end
+            
+            Rayfield:Notify({
+               Title = "Force Field Deactivated",
+               Content = "Protection removed!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INSTANT INTERACT
+local function EnableInstantInteract()
+    OriginalProximityPrompts = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            OriginalProximityPrompts[obj] = obj.HoldDuration
+            obj.HoldDuration = 0
+        end
+    end
+    
+    -- Handle new prompts
+    workspace.DescendantAdded:Connect(function(obj)
+        if InstantInteractEnabled and obj:IsA("ProximityPrompt") then
+            OriginalProximityPrompts[obj] = obj.HoldDuration
+            obj.HoldDuration = 0
+        end
+    end)
+end
+
+local function DisableInstantInteract()
+    for prompt, duration in pairs(OriginalProximityPrompts) do
+        if prompt and prompt.Parent then
+            prompt.HoldDuration = duration
+        end
+    end
+    
+    OriginalProximityPrompts = {}
+end
+
+-- Instant Interact Toggle
+local InstantInteractToggle = MainTab:CreateToggle({
+   Name = "Instant Interact",
+   CurrentValue = false,
+   Flag = "InstantInteractToggle",
+   Callback = function(Value)
+        InstantInteractEnabled = Value
+        
+        if InstantInteractEnabled then
+            EnableInstantInteract()
+            
+            Rayfield:Notify({
+               Title = "Instant Interact Activated",
+               Content = "No more waiting to interact!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInstantInteract()
+            
+            Rayfield:Notify({
+               Title = "Instant Interact Deactivated",
+               Content = "Normal interact times restored!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- VISUALS TAB
 local VisualsSection = VisualsTab:CreateSection("Player ESP")
 
@@ -607,6 +792,95 @@ local ESPToggle = VisualsTab:CreateToggle({
             Rayfield:Notify({
                Title = "ESP Deactivated",
                Content = "ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- NPC ESP SECTION
+local NPCESPSection = VisualsTab:CreateSection("NPC ESP")
+
+local function CreateNPCESP()
+    NPCESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
+            -- This is an NPC
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptNPCESP"
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = obj
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptNPCESPLabel"
+                billboard.Adornee = hrp
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = obj
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = "NPC"
+                nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(NPCESPObjects, {obj, highlight, billboard})
+            end
+        end
+    end
+end
+
+local function RemoveNPCESP()
+    for _, data in pairs(NPCESPObjects) do
+        local model, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    NPCESPObjects = {}
+end
+
+-- NPC ESP Toggle
+local NPCESPToggle = VisualsTab:CreateToggle({
+   Name = "NPC ESP",
+   CurrentValue = false,
+   Flag = "NPCESPToggle",
+   Callback = function(Value)
+        NPCESPEnabled = Value
+        
+        if NPCESPEnabled then
+            CreateNPCESP()
+            
+            Rayfield:Notify({
+               Title = "NPC ESP Activated",
+               Content = "All NPCs are now visible in green!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveNPCESP()
+            
+            Rayfield:Notify({
+               Title = "NPC ESP Deactivated",
+               Content = "NPC ESP removed",
                Duration = 3,
                Image = 4483362458,
             })
@@ -836,6 +1110,23 @@ local RemoveCarpetButton = FunTab:CreateButton({
    end,
 })
 
+-- UNDERGROUND MODE BUTTON
+local UndergroundButton = FunTab:CreateButton({
+   Name = "Go Underground",
+   Callback = function()
+        if HumanoidRootPart then
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0, 15, 0)
+            
+            Rayfield:Notify({
+               Title = "Underground Mode",
+               Content = "You are now 15 studs underground!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- CLICK TELEPORT SECTION
 local ClickTPSection = FunTab:CreateSection("Click Teleport")
 
@@ -1041,15 +1332,33 @@ local CoordinateToggle = FunTab:CreateToggle({
    end,
 })
 
--- Info Section
-local InfoSection = MainTab:CreateSection("Info")
+-- INFO TAB
+local InfoSection = InfoTab:CreateSection("Script Information")
 
-MainTab:CreateLabel("Nic Script v1.4 - Universal")
-MainTab:CreateLabel("Made for Delta Executor")
+InfoTab:CreateLabel("Nic Script v1.5 - Universal")
+InfoTab:CreateLabel("Made for Delta Executor")
+InfoTab:CreateLabel("Created by: Nic")
+
+local DiscordSection = InfoTab:CreateSection("Discord Server")
+
+-- Discord Link Button
+local DiscordButton = InfoTab:CreateButton({
+   Name = "Copy Discord Link",
+   Callback = function()
+        setclipboard("https://discord.gg/mtX7XD7epa")
+        
+        Rayfield:Notify({
+           Title = "Server Link Copied",
+           Content = "Discord link copied to clipboard!",
+           Duration = 3,
+           Image = 4483362458,
+        })
+   end,
+})
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v1.4 Loaded",
+   Title = "Nic Script v1.5 Loaded",
    Content = "All features ready to use!",
    Duration = 5,
    Image = 4483362458,
