@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 1.5
-    Features: Invisibility, NPC ESP, Underground Mode, Force Field, Instant Interact, Click TP, X-Ray, and more!
+    Version: 1.6
+    Features: Teleport Walk, Chat History Enabler, and all previous features!
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v1.5",
+   Name = "Nic Script v1.6",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "Made For Most Executors!",
+   LoadingSubtitle = "by Delta Executor",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -100,6 +100,11 @@ local ForceFieldObject = nil
 local InstantInteractEnabled = false
 local OriginalProximityPrompts = {}
 
+-- Teleport Walk Variables
+local TeleportWalkEnabled = false
+local TeleportWalkSpeed = 5
+local TeleportWalkConnection = nil
+
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
     if not Humanoid then return end
@@ -146,6 +151,11 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     if InvisibilityEnabled then
         InvisibilityEnabled = false
     end
+    
+    -- Reapply teleport walk if it was enabled
+    if TeleportWalkEnabled then
+        TeleportWalkEnabled = false
+    end
 end)
 
 -- Jump Power Slider
@@ -188,6 +198,19 @@ local FlySpeedSlider = MainTab:CreateSlider({
    Flag = "FlySpeedSlider",
    Callback = function(Value)
         FlySpeed = Value
+   end,
+})
+
+-- TELEPORT WALK SPEED SLIDER
+local TeleportWalkSpeedSlider = MainTab:CreateSlider({
+   Name = "Teleport Walk Speed",
+   Range = {1, 20},
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 5,
+   Flag = "TeleportWalkSpeedSlider",
+   Callback = function(Value)
+        TeleportWalkSpeed = Value
    end,
 })
 
@@ -483,6 +506,60 @@ local InfiniteJumpToggle = MainTab:CreateToggle({
             Rayfield:Notify({
                Title = "Infinite Jump Deactivated",
                Content = "Normal jumping restored",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- TELEPORT WALK
+local function EnableTeleportWalk()
+    TeleportWalkConnection = RunService.Heartbeat:Connect(function()
+        if not TeleportWalkEnabled or not HumanoidRootPart then return end
+        
+        local moveVector = Humanoid.MoveVector
+        
+        if moveVector.Magnitude > 0 then
+            local camera = workspace.CurrentCamera
+            local direction = (camera.CFrame.LookVector * moveVector.Z) + (camera.CFrame.RightVector * moveVector.X)
+            
+            -- Teleport forward in the direction of movement
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (direction * TeleportWalkSpeed * 0.1)
+        end
+    end)
+end
+
+local function DisableTeleportWalk()
+    if TeleportWalkConnection then
+        TeleportWalkConnection:Disconnect()
+        TeleportWalkConnection = nil
+    end
+end
+
+-- Teleport Walk Toggle
+local TeleportWalkToggle = MainTab:CreateToggle({
+   Name = "Teleport Walk",
+   CurrentValue = false,
+   Flag = "TeleportWalkToggle",
+   Callback = function(Value)
+        TeleportWalkEnabled = Value
+        
+        if TeleportWalkEnabled then
+            EnableTeleportWalk()
+            
+            Rayfield:Notify({
+               Title = "Teleport Walk Activated",
+               Content = "Walk to teleport forward!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableTeleportWalk()
+            
+            Rayfield:Notify({
+               Title = "Teleport Walk Deactivated",
+               Content = "Normal walking restored",
                Duration = 3,
                Image = 4483362458,
             })
@@ -1127,6 +1204,47 @@ local UndergroundButton = FunTab:CreateButton({
    end,
 })
 
+-- ENABLE CHAT HISTORY BUTTON
+local ChatHistoryButton = FunTab:CreateButton({
+   Name = "Enable Chat History",
+   Callback = function()
+        local success, err = pcall(function()
+            local TextChatService = game:GetService("TextChatService")
+            local ChatWindowConfiguration = TextChatService:FindFirstChild("ChatWindowConfiguration")
+            
+            if ChatWindowConfiguration then
+                ChatWindowConfiguration.Enabled = true
+            end
+            
+            -- Also try StarterGui method for older chat system
+            local StarterGui = game:GetService("StarterGui")
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+            
+            -- Try to enable chat input bar
+            local ChatInputBarConfiguration = TextChatService:FindFirstChild("ChatInputBarConfiguration")
+            if ChatInputBarConfiguration then
+                ChatInputBarConfiguration.Enabled = true
+            end
+        end)
+        
+        if success then
+            Rayfield:Notify({
+               Title = "Chat History Enabled",
+               Content = "Chat should now be visible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+               Title = "Chat Enable Failed",
+               Content = "This game may not have disabled chat!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- CLICK TELEPORT SECTION
 local ClickTPSection = FunTab:CreateSection("Click Teleport")
 
@@ -1335,7 +1453,7 @@ local CoordinateToggle = FunTab:CreateToggle({
 -- INFO TAB
 local InfoSection = InfoTab:CreateSection("Script Information")
 
-InfoTab:CreateLabel("Nic Script v1.5 - Universal")
+InfoTab:CreateLabel("Nic Script v1.6 - Universal")
 InfoTab:CreateLabel("Made for Delta Executor")
 InfoTab:CreateLabel("Created by: Nic")
 
@@ -1358,7 +1476,7 @@ local DiscordButton = InfoTab:CreateButton({
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v1.5 Loaded",
+   Title = "Nic Script v1.6 Loaded",
    Content = "All features ready to use!",
    Duration = 5,
    Image = 4483362458,
