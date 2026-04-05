@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 1.6
-    Features: Teleport Walk, Chat History Enabler, and all previous features!
+    Version: 1.7
+    Features: Aimbot, Teleport Walk, Chat History Enabler, and all previous features!
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v1.6",
+   Name = "Nic Script v1.7",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "Works With Most Executors!",
+   LoadingSubtitle = "Universal Keyless!",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -104,6 +104,12 @@ local OriginalProximityPrompts = {}
 local TeleportWalkEnabled = false
 local TeleportWalkSpeed = 5
 local TeleportWalkConnection = nil
+
+-- Aimbot Variables
+local AimbotEnabled = false
+local AimbotConnection = nil
+local AimbotFOV = 200
+local AimbotTeamCheck = false
 
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
@@ -1033,6 +1039,132 @@ local XRayToggle = VisualsTab:CreateToggle({
    end,
 })
 
+-- AIMBOT SECTION
+local AimbotSection = VisualsTab:CreateSection("Aimbot")
+
+-- Aimbot FOV Slider
+local AimbotFOVSlider = VisualsTab:CreateSlider({
+   Name = "Aimbot FOV",
+   Range = {50, 500},
+   Increment = 10,
+   Suffix = "Studs",
+   CurrentValue = 200,
+   Flag = "AimbotFOVSlider",
+   Callback = function(Value)
+        AimbotFOV = Value
+   end,
+})
+
+-- Aimbot Functions
+local function GetClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = AimbotFOV
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local humanoid = character:FindFirstChild("Humanoid")
+            local head = character:FindFirstChild("Head")
+            
+            if humanoid and humanoid.Health > 0 and head then
+                -- Team check
+                if AimbotTeamCheck and player.Team == LocalPlayer.Team then
+                    continue
+                end
+                
+                local distance = (head.Position - HumanoidRootPart.Position).Magnitude
+                
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function EnableAimbot()
+    AimbotConnection = RunService.RenderStepped:Connect(function()
+        if not AimbotEnabled then return end
+        
+        local target = GetClosestPlayer()
+        
+        if target and target.Character then
+            local head = target.Character:FindFirstChild("Head")
+            
+            if head then
+                local camera = workspace.CurrentCamera
+                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+            end
+        end
+    end)
+end
+
+local function DisableAimbot()
+    if AimbotConnection then
+        AimbotConnection:Disconnect()
+        AimbotConnection = nil
+    end
+end
+
+-- Aimbot Toggle
+local AimbotToggle = VisualsTab:CreateToggle({
+   Name = "Aimbot",
+   CurrentValue = false,
+   Flag = "AimbotToggle",
+   Callback = function(Value)
+        AimbotEnabled = Value
+        
+        if AimbotEnabled then
+            EnableAimbot()
+            
+            Rayfield:Notify({
+               Title = "Aimbot Activated",
+               Content = "Auto-aiming at closest player!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableAimbot()
+            
+            Rayfield:Notify({
+               Title = "Aimbot Deactivated",
+               Content = "Aimbot disabled",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Team Check Toggle
+local TeamCheckToggle = VisualsTab:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = false,
+   Flag = "TeamCheckToggle",
+   Callback = function(Value)
+        AimbotTeamCheck = Value
+        
+        if AimbotTeamCheck then
+            Rayfield:Notify({
+               Title = "Team Check Enabled",
+               Content = "Won't aim at teammates!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+               Title = "Team Check Disabled",
+               Content = "Will aim at everyone!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- FUN TAB
 local FunSection = FunTab:CreateSection("Tools & Items")
 
@@ -1453,7 +1585,7 @@ local CoordinateToggle = FunTab:CreateToggle({
 -- INFO TAB
 local InfoSection = InfoTab:CreateSection("Script Information")
 
-InfoTab:CreateLabel("Nic Script v1.6 - Universal")
+InfoTab:CreateLabel("Nic Script v1.7 - Universal")
 InfoTab:CreateLabel("Made for Delta Executor")
 InfoTab:CreateLabel("Created by: Nic")
 
@@ -1476,7 +1608,7 @@ local DiscordButton = InfoTab:CreateButton({
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v1.6 Loaded",
+   Title = "Nic Script v1.7 Loaded",
    Content = "All features ready to use!",
    Duration = 5,
    Image = 4483362458,
