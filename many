@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 1.7
-    Features: Aimbot, Teleport Walk, Chat History Enabler, and all previous features!
+    Version: 2.0
+    Features: Enhanced Aimbot, Tool ESP, Interaction ESP, and all previous features!
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v1.7",
+   Name = "Nic Script v2.0",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "Universal Keyless!",
+   LoadingSubtitle = "KEYLESS",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -70,6 +70,14 @@ local ESPObjects = {}
 local NPCESPEnabled = false
 local NPCESPObjects = {}
 
+-- Tool ESP Variables
+local ToolESPEnabled = false
+local ToolESPObjects = {}
+
+-- Interaction ESP Variables
+local InteractionESPEnabled = false
+local InteractionESPObjects = {}
+
 -- Jump Variables
 local CurrentJumpPower = 50
 local CurrentWalkSpeed = 16
@@ -110,6 +118,7 @@ local AimbotEnabled = false
 local AimbotConnection = nil
 local AimbotFOV = 200
 local AimbotTeamCheck = false
+local AimbotSmoothness = 0.5
 
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
@@ -971,6 +980,292 @@ local NPCESPToggle = VisualsTab:CreateToggle({
    end,
 })
 
+-- TOOL ESP SECTION
+local ToolESPSection = VisualsTab:CreateSection("Tool ESP")
+
+local function CreateToolESP()
+    ToolESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") or (obj:IsA("Model") and obj:FindFirstChildOfClass("Tool")) then
+            local tool = obj:IsA("Tool") and obj or obj:FindFirstChildOfClass("Tool")
+            local handle = tool:FindFirstChild("Handle")
+            
+            if handle then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptToolESP"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = tool
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptToolESPLabel"
+                billboard.Adornee = handle
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = tool
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = tool.Name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(ToolESPObjects, {tool, highlight, billboard})
+            end
+        end
+    end
+    
+    -- Handle new tools
+    workspace.DescendantAdded:Connect(function(obj)
+        if ToolESPEnabled and obj:IsA("Tool") then
+            wait(0.1)
+            local handle = obj:FindFirstChild("Handle")
+            if handle then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptToolESP"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = obj
+                
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptToolESPLabel"
+                billboard.Adornee = handle
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = obj
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.Name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(ToolESPObjects, {obj, highlight, billboard})
+            end
+        end
+    end)
+end
+
+local function RemoveToolESP()
+    for _, data in pairs(ToolESPObjects) do
+        local tool, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    ToolESPObjects = {}
+end
+
+-- Tool ESP Toggle
+local ToolESPToggle = VisualsTab:CreateToggle({
+   Name = "Tool ESP (Yellow)",
+   CurrentValue = false,
+   Flag = "ToolESPToggle",
+   Callback = function(Value)
+        ToolESPEnabled = Value
+        
+        if ToolESPEnabled then
+            CreateToolESP()
+            
+            Rayfield:Notify({
+               Title = "Tool ESP Activated",
+               Content = "All tools are now highlighted in yellow!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveToolESP()
+            
+            Rayfield:Notify({
+               Title = "Tool ESP Deactivated",
+               Content = "Tool ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INTERACTION ESP SECTION
+local InteractionESPSection = VisualsTab:CreateSection("Interaction ESP")
+
+local function CreateInteractionESP()
+    InteractionESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local parent = obj.Parent
+            
+            if parent and parent:IsA("BasePart") then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptInteractionESPLabel"
+                billboard.Adornee = parent
+                billboard.Size = UDim2.new(0, 120, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = parent
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.ObjectText or "Interact"
+                nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(InteractionESPObjects, {parent, highlight, billboard})
+            elseif parent and parent:IsA("Model") then
+                -- Highlight the whole model
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                local primaryPart = parent.PrimaryPart or parent:FindFirstChildOfClass("BasePart")
+                if primaryPart then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "NicScriptInteractionESPLabel"
+                    billboard.Adornee = primaryPart
+                    billboard.Size = UDim2.new(0, 120, 0, 30)
+                    billboard.StudsOffset = Vector3.new(0, 2, 0)
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = parent
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Text = obj.ObjectText or "Interact"
+                    nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                    nameLabel.TextStrokeTransparency = 0
+                    nameLabel.Font = Enum.Font.SourceSansBold
+                    nameLabel.TextSize = 14
+                    nameLabel.Parent = billboard
+                    
+                    table.insert(InteractionESPObjects, {parent, highlight, billboard})
+                end
+            end
+        end
+    end
+    
+    -- Handle new proximity prompts
+    workspace.DescendantAdded:Connect(function(obj)
+        if InteractionESPEnabled and obj:IsA("ProximityPrompt") then
+            wait(0.1)
+            local parent = obj.Parent
+            
+            if parent and parent:IsA("BasePart") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptInteractionESPLabel"
+                billboard.Adornee = parent
+                billboard.Size = UDim2.new(0, 120, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = parent
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.ObjectText or "Interact"
+                nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(InteractionESPObjects, {parent, highlight, billboard})
+            end
+        end
+    end)
+end
+
+local function RemoveInteractionESP()
+    for _, data in pairs(InteractionESPObjects) do
+        local parent, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    InteractionESPObjects = {}
+end
+
+-- Interaction ESP Toggle
+local InteractionESPToggle = VisualsTab:CreateToggle({
+   Name = "Interaction ESP (Purple)",
+   CurrentValue = false,
+   Flag = "InteractionESPToggle",
+   Callback = function(Value)
+        InteractionESPEnabled = Value
+        
+        if InteractionESPEnabled then
+            CreateInteractionESP()
+            
+            Rayfield:Notify({
+               Title = "Interaction ESP Activated",
+               Content = "All interactables are now highlighted in purple!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveInteractionESP()
+            
+            Rayfield:Notify({
+               Title = "Interaction ESP Deactivated",
+               Content = "Interaction ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
 -- X-RAY / TRANSPARENT BLOCKS SECTION
 local XRaySection = VisualsTab:CreateSection("X-Ray Vision")
 
@@ -1039,7 +1334,7 @@ local XRayToggle = VisualsTab:CreateToggle({
    end,
 })
 
--- AIMBOT SECTION
+-- ENHANCED AIMBOT SECTION
 local AimbotSection = VisualsTab:CreateSection("Aimbot")
 
 -- Aimbot FOV Slider
@@ -1055,10 +1350,25 @@ local AimbotFOVSlider = VisualsTab:CreateSlider({
    end,
 })
 
--- Aimbot Functions
-local function GetClosestPlayer()
+-- Aimbot Smoothness Slider
+local AimbotSmoothnessSlider = VisualsTab:CreateSlider({
+   Name = "Aimbot Smoothness",
+   Range = {0, 1},
+   Increment = 0.1,
+   Suffix = "",
+   CurrentValue = 0.5,
+   Flag = "AimbotSmoothnessSlider",
+   Callback = function(Value)
+        AimbotSmoothness = Value
+   end,
+})
+
+-- Enhanced Aimbot Functions
+local function GetClosestPlayerToCursor()
     local closestPlayer = nil
     local shortestDistance = AimbotFOV
+    local camera = workspace.CurrentCamera
+    local mousePos = UserInputService:GetMouseLocation()
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
@@ -1072,11 +1382,19 @@ local function GetClosestPlayer()
                     continue
                 end
                 
-                local distance = (head.Position - HumanoidRootPart.Position).Magnitude
+                -- Calculate screen position
+                local headPos, onScreen = camera:WorldToViewportPoint(head.Position)
                 
-                if distance < shortestDistance then
-                    closestPlayer = player
-                    shortestDistance = distance
+                if onScreen then
+                    local screenPos = Vector2.new(headPos.X, headPos.Y)
+                    local distanceFromMouse = (screenPos - mousePos).Magnitude
+                    local distanceFrom3D = (head.Position - HumanoidRootPart.Position).Magnitude
+                    
+                    -- Check if within FOV and closer than previous
+                    if distanceFrom3D < AimbotFOV and distanceFromMouse < shortestDistance then
+                        closestPlayer = player
+                        shortestDistance = distanceFromMouse
+                    end
                 end
             end
         end
@@ -1089,14 +1407,21 @@ local function EnableAimbot()
     AimbotConnection = RunService.RenderStepped:Connect(function()
         if not AimbotEnabled then return end
         
-        local target = GetClosestPlayer()
+        local target = GetClosestPlayerToCursor()
         
         if target and target.Character then
             local head = target.Character:FindFirstChild("Head")
             
             if head then
                 local camera = workspace.CurrentCamera
-                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+                local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
+                
+                -- Smooth aiming
+                if AimbotSmoothness > 0 then
+                    camera.CFrame = camera.CFrame:Lerp(targetCFrame, 1 - AimbotSmoothness)
+                else
+                    camera.CFrame = targetCFrame
+                end
             end
         end
     end)
@@ -1122,7 +1447,7 @@ local AimbotToggle = VisualsTab:CreateToggle({
             
             Rayfield:Notify({
                Title = "Aimbot Activated",
-               Content = "Auto-aiming at closest player!",
+               Content = "Auto-aiming at closest player to cursor!",
                Duration = 3,
                Image = 4483362458,
             })
@@ -1585,8 +1910,8 @@ local CoordinateToggle = FunTab:CreateToggle({
 -- INFO TAB
 local InfoSection = InfoTab:CreateSection("Script Information")
 
-InfoTab:CreateLabel("Nic Script v1.7 - Universal")
-InfoTab:CreateLabel("Made for Delta Executor")
+InfoTab:CreateLabel("Nic Script v2.0 - Universal")
+InfoTab:CreateLabel("Made for Most Executors!")
 InfoTab:CreateLabel("Created by: Nic")
 
 local DiscordSection = InfoTab:CreateSection("Discord Server")
@@ -1608,7 +1933,7 @@ local DiscordButton = InfoTab:CreateButton({
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v1.7 Loaded",
+   Title = "Nic Script v2.0 Loaded",
    Content = "All features ready to use!",
    Duration = 5,
    Image = 4483362458,
