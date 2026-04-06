@@ -1,0 +1,1940 @@
+--[[
+    Nic Script - Universal Roblox Script
+    Version: 2.0
+    Features: Enhanced Aimbot, Tool ESP, Interaction ESP, and all previous features!
+    UI Library: Rayfield
+]]--
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Nic Script v2.0",
+   LoadingTitle = "Nic Script Loading...",
+   LoadingSubtitle = "KEYLESS",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "NicScript"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false,
+   KeySettings = {
+      Title = "Nic Script",
+      Subtitle = "Key System",
+      Note = "No key needed",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"Hello"}
+   }
+})
+
+-- Tabs
+local MainTab = Window:CreateTab("Main", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+local FunTab = Window:CreateTab("Fun", 4483362458)
+local InfoTab = Window:CreateTab("Info", 4483362458)
+
+local Section = MainTab:CreateSection("Character Modifications")
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Mouse = LocalPlayer:GetMouse()
+
+-- Noclip Variables
+local NoclipEnabled = false
+local NoclipConnection
+
+-- Fly Variables
+local FlyEnabled = false
+local FlySpeed = 50
+local Flying = false
+local FlyConnection = nil
+local MobileControls = nil
+
+-- ESP Variables
+local ESPEnabled = false
+local ESPObjects = {}
+
+-- NPC ESP Variables
+local NPCESPEnabled = false
+local NPCESPObjects = {}
+
+-- Tool ESP Variables
+local ToolESPEnabled = false
+local ToolESPObjects = {}
+
+-- Interaction ESP Variables
+local InteractionESPEnabled = false
+local InteractionESPObjects = {}
+
+-- Jump Variables
+local CurrentJumpPower = 50
+local CurrentWalkSpeed = 16
+local InfiniteJumpEnabled = false
+local InfiniteJumpConnection = nil
+
+-- Coordinate Variables
+local CoordinateGui = nil
+local CoordinateEnabled = false
+local CoordinateConnection = nil
+
+-- Click TP Variables
+local ClickTPEnabled = false
+local ClickTPConnection = nil
+
+-- X-Ray Variables
+local XRayEnabled = false
+local OriginalTransparencies = {}
+
+-- Invisibility Variables
+local InvisibilityEnabled = false
+local OriginalCharacterParts = {}
+
+-- Force Field Variable
+local ForceFieldObject = nil
+
+-- Instant Interact Variables
+local InstantInteractEnabled = false
+local OriginalProximityPrompts = {}
+
+-- Teleport Walk Variables
+local TeleportWalkEnabled = false
+local TeleportWalkSpeed = 5
+local TeleportWalkConnection = nil
+
+-- Aimbot Variables
+local AimbotEnabled = false
+local AimbotConnection = nil
+local AimbotFOV = 200
+local AimbotTeamCheck = false
+local AimbotSmoothness = 0.5
+
+-- Detect if game uses JumpPower or JumpHeight
+local function SetJumpPower(value)
+    if not Humanoid then return end
+    
+    -- Check if the game uses the new JumpHeight system
+    if Humanoid.UseJumpPower == false then
+        -- Convert JumpPower to JumpHeight (approximate conversion)
+        Humanoid.JumpHeight = value / 10
+    else
+        -- Use classic JumpPower
+        Humanoid.UseJumpPower = true
+        Humanoid.JumpPower = value
+    end
+end
+
+-- Update character reference on respawn
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+    
+    -- Reapply jump power
+    wait(0.1)
+    SetJumpPower(CurrentJumpPower)
+    Humanoid.WalkSpeed = CurrentWalkSpeed
+    
+    -- Reapply noclip if it was enabled
+    if NoclipEnabled then
+        NoclipEnabled = false
+    end
+    
+    -- Reapply fly if it was enabled
+    if FlyEnabled then
+        FlyEnabled = false
+        Flying = false
+    end
+    
+    -- Reapply infinite jump if it was enabled
+    if InfiniteJumpEnabled then
+        InfiniteJumpEnabled = false
+    end
+    
+    -- Reapply invisibility if it was enabled
+    if InvisibilityEnabled then
+        InvisibilityEnabled = false
+    end
+    
+    -- Reapply teleport walk if it was enabled
+    if TeleportWalkEnabled then
+        TeleportWalkEnabled = false
+    end
+end)
+
+-- Jump Power Slider
+local JumpPowerSlider = MainTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 1000},
+   Increment = 25,
+   Suffix = "Power",
+   CurrentValue = 50,
+   Flag = "JumpPowerSlider",
+   Callback = function(Value)
+        CurrentJumpPower = Value
+        SetJumpPower(Value)
+   end,
+})
+
+-- Speed Slider
+local SpeedSlider = MainTab:CreateSlider({
+   Name = "Walk Speed",
+   Range = {16, 500},
+   Increment = 10,
+   Suffix = "Speed",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+        CurrentWalkSpeed = Value
+        if Character and Humanoid then
+            Humanoid.WalkSpeed = Value
+        end
+   end,
+})
+
+-- Fly Speed Slider
+local FlySpeedSlider = MainTab:CreateSlider({
+   Name = "Fly Speed",
+   Range = {10, 500},
+   Increment = 10,
+   Suffix = "Speed",
+   CurrentValue = 50,
+   Flag = "FlySpeedSlider",
+   Callback = function(Value)
+        FlySpeed = Value
+   end,
+})
+
+-- TELEPORT WALK SPEED SLIDER
+local TeleportWalkSpeedSlider = MainTab:CreateSlider({
+   Name = "Teleport Walk Speed",
+   Range = {1, 20},
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 5,
+   Flag = "TeleportWalkSpeedSlider",
+   Callback = function(Value)
+        TeleportWalkSpeed = Value
+   end,
+})
+
+-- Noclip Function
+local function Noclip()
+    if Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
+-- IMPROVED FLY SYSTEM WITH MOBILE SUPPORT
+local function CreateMobileControls()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Remove existing controls
+    local existingControls = playerGui:FindFirstChild("NicScriptFlyControls")
+    if existingControls then
+        existingControls:Destroy()
+    end
+    
+    -- Create ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "NicScriptFlyControls"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+    
+    -- Up Button
+    local upButton = Instance.new("TextButton")
+    upButton.Size = UDim2.new(0, 60, 0, 60)
+    upButton.Position = UDim2.new(1, -80, 0.5, -130)
+    upButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    upButton.Text = "UP"
+    upButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    upButton.Font = Enum.Font.SourceSansBold
+    upButton.TextSize = 20
+    upButton.Parent = screenGui
+    
+    local upCorner = Instance.new("UICorner")
+    upCorner.CornerRadius = UDim.new(0, 10)
+    upCorner.Parent = upButton
+    
+    -- Down Button
+    local downButton = Instance.new("TextButton")
+    downButton.Size = UDim2.new(0, 60, 0, 60)
+    downButton.Position = UDim2.new(1, -80, 0.5, 70)
+    downButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    downButton.Text = "DOWN"
+    downButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    downButton.Font = Enum.Font.SourceSansBold
+    downButton.TextSize = 16
+    downButton.Parent = screenGui
+    
+    local downCorner = Instance.new("UICorner")
+    downCorner.CornerRadius = UDim.new(0, 10)
+    downCorner.Parent = downButton
+    
+    MobileControls = screenGui
+    
+    return upButton, downButton
+end
+
+local function StartFly()
+    if not HumanoidRootPart then return end
+    
+    Flying = true
+    
+    -- Disable gravity
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = HumanoidRootPart
+    
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "FlyGyro"
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.P = 9e4
+    bodyGyro.Parent = HumanoidRootPart
+    
+    -- Mobile controls
+    local upButton, downButton = CreateMobileControls()
+    local mobileUp = false
+    local mobileDown = false
+    
+    upButton.MouseButton1Down:Connect(function()
+        mobileUp = true
+    end)
+    
+    upButton.MouseButton1Up:Connect(function()
+        mobileUp = false
+    end)
+    
+    downButton.MouseButton1Down:Connect(function()
+        mobileDown = true
+    end)
+    
+    downButton.MouseButton1Up:Connect(function()
+        mobileDown = false
+    end)
+    
+    -- Fly loop
+    FlyConnection = RunService.Heartbeat:Connect(function()
+        if not Flying or not FlyEnabled or not HumanoidRootPart then return end
+        
+        local bv = HumanoidRootPart:FindFirstChild("FlyVelocity")
+        local bg = HumanoidRootPart:FindFirstChild("FlyGyro")
+        
+        if not bv or not bg then return end
+        
+        local camera = workspace.CurrentCamera
+        local direction = Vector3.new(0, 0, 0)
+        
+        -- Keyboard controls
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            direction = direction + camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            direction = direction - camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            direction = direction - camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            direction = direction + camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or mobileUp then
+            direction = direction + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or mobileDown then
+            direction = direction - Vector3.new(0, 1, 0)
+        end
+        
+        -- Mobile thumbstick support
+        local moveVector = Humanoid.MoveVector
+        if moveVector.Magnitude > 0 then
+            local moveDirection = (camera.CFrame.LookVector * moveVector.Z) + (camera.CFrame.RightVector * moveVector.X)
+            direction = direction + moveDirection
+        end
+        
+        bv.Velocity = direction * FlySpeed
+        bg.CFrame = camera.CFrame
+        
+        -- Keep humanoid in "flying" state
+        Humanoid.PlatformStand = true
+    end)
+end
+
+local function StopFly()
+    Flying = false
+    
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+    
+    -- Remove mobile controls
+    if MobileControls then
+        MobileControls:Destroy()
+        MobileControls = nil
+    end
+    
+    -- Remove fly objects
+    if HumanoidRootPart then
+        local bv = HumanoidRootPart:FindFirstChild("FlyVelocity")
+        if bv then bv:Destroy() end
+        
+        local bg = HumanoidRootPart:FindFirstChild("FlyGyro")
+        if bg then bg:Destroy() end
+    end
+    
+    -- Restore normal state
+    if Humanoid then
+        Humanoid.PlatformStand = false
+    end
+end
+
+-- Noclip Toggle
+local NoclipToggle = MainTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Flag = "NoclipToggle",
+   Callback = function(Value)
+        NoclipEnabled = Value
+        
+        if NoclipEnabled then
+            -- Start noclip loop
+            NoclipConnection = RunService.Stepped:Connect(function()
+                if NoclipEnabled then
+                    Noclip()
+                end
+            end)
+            
+            Rayfield:Notify({
+               Title = "Noclip Activated",
+               Content = "You can now walk through walls!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            -- Stop noclip and restore collision
+            if NoclipConnection then
+                NoclipConnection:Disconnect()
+            end
+            
+            if Character then
+                for _, part in pairs(Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+            
+            Rayfield:Notify({
+               Title = "Noclip Deactivated",
+               Content = "Collision restored",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Fly Toggle
+local FlyToggle = MainTab:CreateToggle({
+   Name = "Fly",
+   CurrentValue = false,
+   Flag = "FlyToggle",
+   Callback = function(Value)
+        FlyEnabled = Value
+        
+        if FlyEnabled then
+            StartFly()
+            
+            Rayfield:Notify({
+               Title = "Fly Activated",
+               Content = "PC: WASD + Space/Shift | Mobile: Use buttons!",
+               Duration = 4,
+               Image = 4483362458,
+            })
+        else
+            StopFly()
+            
+            Rayfield:Notify({
+               Title = "Fly Deactivated",
+               Content = "Fly mode disabled",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INFINITE JUMP
+local function EnableInfiniteJump()
+    InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+        if InfiniteJumpEnabled and Humanoid then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+end
+
+local function DisableInfiniteJump()
+    if InfiniteJumpConnection then
+        InfiniteJumpConnection:Disconnect()
+        InfiniteJumpConnection = nil
+    end
+end
+
+-- Infinite Jump Toggle
+local InfiniteJumpToggle = MainTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfiniteJumpToggle",
+   Callback = function(Value)
+        InfiniteJumpEnabled = Value
+        
+        if InfiniteJumpEnabled then
+            EnableInfiniteJump()
+            
+            Rayfield:Notify({
+               Title = "Infinite Jump Activated",
+               Content = "Jump as many times as you want!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInfiniteJump()
+            
+            Rayfield:Notify({
+               Title = "Infinite Jump Deactivated",
+               Content = "Normal jumping restored",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- TELEPORT WALK
+local function EnableTeleportWalk()
+    TeleportWalkConnection = RunService.Heartbeat:Connect(function()
+        if not TeleportWalkEnabled or not HumanoidRootPart then return end
+        
+        local moveVector = Humanoid.MoveVector
+        
+        if moveVector.Magnitude > 0 then
+            local camera = workspace.CurrentCamera
+            local direction = (camera.CFrame.LookVector * moveVector.Z) + (camera.CFrame.RightVector * moveVector.X)
+            
+            -- Teleport forward in the direction of movement
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (direction * TeleportWalkSpeed * 0.1)
+        end
+    end)
+end
+
+local function DisableTeleportWalk()
+    if TeleportWalkConnection then
+        TeleportWalkConnection:Disconnect()
+        TeleportWalkConnection = nil
+    end
+end
+
+-- Teleport Walk Toggle
+local TeleportWalkToggle = MainTab:CreateToggle({
+   Name = "Teleport Walk",
+   CurrentValue = false,
+   Flag = "TeleportWalkToggle",
+   Callback = function(Value)
+        TeleportWalkEnabled = Value
+        
+        if TeleportWalkEnabled then
+            EnableTeleportWalk()
+            
+            Rayfield:Notify({
+               Title = "Teleport Walk Activated",
+               Content = "Walk to teleport forward!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableTeleportWalk()
+            
+            Rayfield:Notify({
+               Title = "Teleport Walk Deactivated",
+               Content = "Normal walking restored",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INVISIBILITY TOGGLE
+local function EnableInvisibility()
+    OriginalCharacterParts = {}
+    
+    for _, part in pairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            OriginalCharacterParts[part] = part.Transparency
+            part.Transparency = 1
+        end
+        
+        if part:IsA("Accessory") then
+            local handle = part:FindFirstChild("Handle")
+            if handle then
+                OriginalCharacterParts[handle] = handle.Transparency
+                handle.Transparency = 1
+            end
+        end
+    end
+    
+    -- Hide face
+    if Character:FindFirstChild("Head") then
+        local face = Character.Head:FindFirstChild("face")
+        if face then
+            OriginalCharacterParts[face] = face.Transparency
+            face.Transparency = 1
+        end
+    end
+end
+
+local function DisableInvisibility()
+    for part, transparency in pairs(OriginalCharacterParts) do
+        if part and part.Parent then
+            part.Transparency = transparency
+        end
+    end
+    
+    OriginalCharacterParts = {}
+end
+
+-- Invisibility Toggle
+local InvisibilityToggle = MainTab:CreateToggle({
+   Name = "Invisibility",
+   CurrentValue = false,
+   Flag = "InvisibilityToggle",
+   Callback = function(Value)
+        InvisibilityEnabled = Value
+        
+        if InvisibilityEnabled then
+            EnableInvisibility()
+            
+            Rayfield:Notify({
+               Title = "Invisibility Activated",
+               Content = "You are now invisible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInvisibility()
+            
+            Rayfield:Notify({
+               Title = "Invisibility Deactivated",
+               Content = "You are now visible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- FORCE FIELD TOGGLE
+local ForceFieldToggle = MainTab:CreateToggle({
+   Name = "Force Field",
+   CurrentValue = false,
+   Flag = "ForceFieldToggle",
+   Callback = function(Value)
+        if Value then
+            -- Create Force Field
+            ForceFieldObject = Instance.new("ForceField")
+            ForceFieldObject.Visible = true
+            ForceFieldObject.Parent = Character
+            
+            Rayfield:Notify({
+               Title = "Force Field Activated",
+               Content = "You are now protected!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            -- Remove Force Field
+            if ForceFieldObject then
+                ForceFieldObject:Destroy()
+                ForceFieldObject = nil
+            end
+            
+            Rayfield:Notify({
+               Title = "Force Field Deactivated",
+               Content = "Protection removed!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INSTANT INTERACT
+local function EnableInstantInteract()
+    OriginalProximityPrompts = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            OriginalProximityPrompts[obj] = obj.HoldDuration
+            obj.HoldDuration = 0
+        end
+    end
+    
+    -- Handle new prompts
+    workspace.DescendantAdded:Connect(function(obj)
+        if InstantInteractEnabled and obj:IsA("ProximityPrompt") then
+            OriginalProximityPrompts[obj] = obj.HoldDuration
+            obj.HoldDuration = 0
+        end
+    end)
+end
+
+local function DisableInstantInteract()
+    for prompt, duration in pairs(OriginalProximityPrompts) do
+        if prompt and prompt.Parent then
+            prompt.HoldDuration = duration
+        end
+    end
+    
+    OriginalProximityPrompts = {}
+end
+
+-- Instant Interact Toggle
+local InstantInteractToggle = MainTab:CreateToggle({
+   Name = "Instant Interact",
+   CurrentValue = false,
+   Flag = "InstantInteractToggle",
+   Callback = function(Value)
+        InstantInteractEnabled = Value
+        
+        if InstantInteractEnabled then
+            EnableInstantInteract()
+            
+            Rayfield:Notify({
+               Title = "Instant Interact Activated",
+               Content = "No more waiting to interact!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableInstantInteract()
+            
+            Rayfield:Notify({
+               Title = "Instant Interact Deactivated",
+               Content = "Normal interact times restored!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- VISUALS TAB
+local VisualsSection = VisualsTab:CreateSection("Player ESP")
+
+-- ESP Functions
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    
+    local function addESP(character)
+        if not character then return end
+        
+        local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+        
+        -- Create Highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "NicScriptESP"
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = character
+        
+        -- Create BillboardGui for name and distance
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "NicScriptESPLabel"
+        billboard.Adornee = hrp
+        billboard.Size = UDim2.new(0, 100, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = character
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.Font = Enum.Font.SourceSansBold
+        nameLabel.TextSize = 14
+        nameLabel.Parent = billboard
+        
+        local distanceLabel = Instance.new("TextLabel")
+        distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        distanceLabel.TextStrokeTransparency = 0
+        distanceLabel.Font = Enum.Font.SourceSans
+        distanceLabel.TextSize = 12
+        distanceLabel.Parent = billboard
+        
+        -- Update distance
+        local updateConnection
+        updateConnection = RunService.Heartbeat:Connect(function()
+            if not ESPEnabled or not character or not character.Parent or not HumanoidRootPart then
+                updateConnection:Disconnect()
+                return
+            end
+            
+            local distance = (HumanoidRootPart.Position - hrp.Position).Magnitude
+            distanceLabel.Text = string.format("%.1f studs", distance)
+        end)
+        
+        ESPObjects[player] = {highlight, billboard, updateConnection}
+    end
+    
+    if player.Character then
+        addESP(player.Character)
+    end
+    
+    player.CharacterAdded:Connect(function(character)
+        if ESPEnabled then
+            wait(0.5)
+            addESP(character)
+        end
+    end)
+end
+
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        for _, object in pairs(ESPObjects[player]) do
+            if typeof(object) == "Instance" then
+                object:Destroy()
+            elseif typeof(object) == "RBXScriptConnection" then
+                object:Disconnect()
+            end
+        end
+        ESPObjects[player] = nil
+    end
+    
+    if player.Character then
+        local highlight = player.Character:FindFirstChild("NicScriptESP")
+        if highlight then highlight:Destroy() end
+        
+        local billboard = player.Character:FindFirstChild("NicScriptESPLabel")
+        if billboard then billboard:Destroy() end
+    end
+end
+
+local function RemoveAllESP()
+    for player, _ in pairs(ESPObjects) do
+        RemoveESP(player)
+    end
+end
+
+-- ESP Toggle
+local ESPToggle = VisualsTab:CreateToggle({
+   Name = "Player ESP",
+   CurrentValue = false,
+   Flag = "ESPToggle",
+   Callback = function(Value)
+        ESPEnabled = Value
+        
+        if ESPEnabled then
+            -- Add ESP to all current players
+            for _, player in pairs(Players:GetPlayers()) do
+                CreateESP(player)
+            end
+            
+            -- Add ESP to new players
+            Players.PlayerAdded:Connect(function(player)
+                if ESPEnabled then
+                    CreateESP(player)
+                end
+            end)
+            
+            Rayfield:Notify({
+               Title = "ESP Activated",
+               Content = "All players are now visible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveAllESP()
+            
+            Rayfield:Notify({
+               Title = "ESP Deactivated",
+               Content = "ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- NPC ESP SECTION
+local NPCESPSection = VisualsTab:CreateSection("NPC ESP")
+
+local function CreateNPCESP()
+    NPCESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
+            -- This is an NPC
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptNPCESP"
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = obj
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptNPCESPLabel"
+                billboard.Adornee = hrp
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = obj
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = "NPC"
+                nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(NPCESPObjects, {obj, highlight, billboard})
+            end
+        end
+    end
+end
+
+local function RemoveNPCESP()
+    for _, data in pairs(NPCESPObjects) do
+        local model, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    NPCESPObjects = {}
+end
+
+-- NPC ESP Toggle
+local NPCESPToggle = VisualsTab:CreateToggle({
+   Name = "NPC ESP",
+   CurrentValue = false,
+   Flag = "NPCESPToggle",
+   Callback = function(Value)
+        NPCESPEnabled = Value
+        
+        if NPCESPEnabled then
+            CreateNPCESP()
+            
+            Rayfield:Notify({
+               Title = "NPC ESP Activated",
+               Content = "All NPCs are now visible in green!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveNPCESP()
+            
+            Rayfield:Notify({
+               Title = "NPC ESP Deactivated",
+               Content = "NPC ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- TOOL ESP SECTION
+local ToolESPSection = VisualsTab:CreateSection("Tool ESP")
+
+local function CreateToolESP()
+    ToolESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") or (obj:IsA("Model") and obj:FindFirstChildOfClass("Tool")) then
+            local tool = obj:IsA("Tool") and obj or obj:FindFirstChildOfClass("Tool")
+            local handle = tool:FindFirstChild("Handle")
+            
+            if handle then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptToolESP"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = tool
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptToolESPLabel"
+                billboard.Adornee = handle
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = tool
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = tool.Name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(ToolESPObjects, {tool, highlight, billboard})
+            end
+        end
+    end
+    
+    -- Handle new tools
+    workspace.DescendantAdded:Connect(function(obj)
+        if ToolESPEnabled and obj:IsA("Tool") then
+            wait(0.1)
+            local handle = obj:FindFirstChild("Handle")
+            if handle then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptToolESP"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = obj
+                
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptToolESPLabel"
+                billboard.Adornee = handle
+                billboard.Size = UDim2.new(0, 100, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = obj
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.Name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(ToolESPObjects, {obj, highlight, billboard})
+            end
+        end
+    end)
+end
+
+local function RemoveToolESP()
+    for _, data in pairs(ToolESPObjects) do
+        local tool, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    ToolESPObjects = {}
+end
+
+-- Tool ESP Toggle
+local ToolESPToggle = VisualsTab:CreateToggle({
+   Name = "Tool ESP (Yellow)",
+   CurrentValue = false,
+   Flag = "ToolESPToggle",
+   Callback = function(Value)
+        ToolESPEnabled = Value
+        
+        if ToolESPEnabled then
+            CreateToolESP()
+            
+            Rayfield:Notify({
+               Title = "Tool ESP Activated",
+               Content = "All tools are now highlighted in yellow!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveToolESP()
+            
+            Rayfield:Notify({
+               Title = "Tool ESP Deactivated",
+               Content = "Tool ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INTERACTION ESP SECTION
+local InteractionESPSection = VisualsTab:CreateSection("Interaction ESP")
+
+local function CreateInteractionESP()
+    InteractionESPObjects = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local parent = obj.Parent
+            
+            if parent and parent:IsA("BasePart") then
+                -- Create Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                -- Create BillboardGui
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptInteractionESPLabel"
+                billboard.Adornee = parent
+                billboard.Size = UDim2.new(0, 120, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = parent
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.ObjectText or "Interact"
+                nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(InteractionESPObjects, {parent, highlight, billboard})
+            elseif parent and parent:IsA("Model") then
+                -- Highlight the whole model
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                local primaryPart = parent.PrimaryPart or parent:FindFirstChildOfClass("BasePart")
+                if primaryPart then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "NicScriptInteractionESPLabel"
+                    billboard.Adornee = primaryPart
+                    billboard.Size = UDim2.new(0, 120, 0, 30)
+                    billboard.StudsOffset = Vector3.new(0, 2, 0)
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = parent
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Text = obj.ObjectText or "Interact"
+                    nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                    nameLabel.TextStrokeTransparency = 0
+                    nameLabel.Font = Enum.Font.SourceSansBold
+                    nameLabel.TextSize = 14
+                    nameLabel.Parent = billboard
+                    
+                    table.insert(InteractionESPObjects, {parent, highlight, billboard})
+                end
+            end
+        end
+    end
+    
+    -- Handle new proximity prompts
+    workspace.DescendantAdded:Connect(function(obj)
+        if InteractionESPEnabled and obj:IsA("ProximityPrompt") then
+            wait(0.1)
+            local parent = obj.Parent
+            
+            if parent and parent:IsA("BasePart") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "NicScriptInteractionESP"
+                highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+                highlight.Parent = parent
+                
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NicScriptInteractionESPLabel"
+                billboard.Adornee = parent
+                billboard.Size = UDim2.new(0, 120, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = parent
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = obj.ObjectText or "Interact"
+                nameLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                nameLabel.TextStrokeTransparency = 0
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextSize = 14
+                nameLabel.Parent = billboard
+                
+                table.insert(InteractionESPObjects, {parent, highlight, billboard})
+            end
+        end
+    end)
+end
+
+local function RemoveInteractionESP()
+    for _, data in pairs(InteractionESPObjects) do
+        local parent, highlight, billboard = data[1], data[2], data[3]
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+        if billboard and billboard.Parent then
+            billboard:Destroy()
+        end
+    end
+    
+    InteractionESPObjects = {}
+end
+
+-- Interaction ESP Toggle
+local InteractionESPToggle = VisualsTab:CreateToggle({
+   Name = "Interaction ESP (Purple)",
+   CurrentValue = false,
+   Flag = "InteractionESPToggle",
+   Callback = function(Value)
+        InteractionESPEnabled = Value
+        
+        if InteractionESPEnabled then
+            CreateInteractionESP()
+            
+            Rayfield:Notify({
+               Title = "Interaction ESP Activated",
+               Content = "All interactables are now highlighted in purple!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveInteractionESP()
+            
+            Rayfield:Notify({
+               Title = "Interaction ESP Deactivated",
+               Content = "Interaction ESP removed",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- X-RAY / TRANSPARENT BLOCKS SECTION
+local XRaySection = VisualsTab:CreateSection("X-Ray Vision")
+
+local function EnableXRay()
+    OriginalTransparencies = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Parent ~= Character and not obj.Parent:FindFirstChild("Humanoid") then
+            -- Store original transparency
+            if not OriginalTransparencies[obj] then
+                OriginalTransparencies[obj] = obj.Transparency
+            end
+            
+            -- Make transparent
+            obj.Transparency = 0.7
+        end
+    end
+    
+    -- Handle new parts being added
+    workspace.DescendantAdded:Connect(function(obj)
+        if XRayEnabled and obj:IsA("BasePart") and obj.Parent ~= Character and not obj.Parent:FindFirstChild("Humanoid") then
+            OriginalTransparencies[obj] = obj.Transparency
+            obj.Transparency = 0.7
+        end
+    end)
+end
+
+local function DisableXRay()
+    -- Restore original transparencies
+    for obj, originalTransparency in pairs(OriginalTransparencies) do
+        if obj and obj.Parent then
+            obj.Transparency = originalTransparency
+        end
+    end
+    
+    OriginalTransparencies = {}
+end
+
+-- X-Ray Toggle
+local XRayToggle = VisualsTab:CreateToggle({
+   Name = "X-Ray (Transparent Blocks)",
+   CurrentValue = false,
+   Flag = "XRayToggle",
+   Callback = function(Value)
+        XRayEnabled = Value
+        
+        if XRayEnabled then
+            EnableXRay()
+            
+            Rayfield:Notify({
+               Title = "X-Ray Activated",
+               Content = "All blocks are now transparent!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableXRay()
+            
+            Rayfield:Notify({
+               Title = "X-Ray Deactivated",
+               Content = "Blocks restored to normal!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- ENHANCED AIMBOT SECTION
+local AimbotSection = VisualsTab:CreateSection("Aimbot")
+
+-- Aimbot FOV Slider
+local AimbotFOVSlider = VisualsTab:CreateSlider({
+   Name = "Aimbot FOV",
+   Range = {50, 500},
+   Increment = 10,
+   Suffix = "Studs",
+   CurrentValue = 200,
+   Flag = "AimbotFOVSlider",
+   Callback = function(Value)
+        AimbotFOV = Value
+   end,
+})
+
+-- Aimbot Smoothness Slider
+local AimbotSmoothnessSlider = VisualsTab:CreateSlider({
+   Name = "Aimbot Smoothness",
+   Range = {0, 1},
+   Increment = 0.1,
+   Suffix = "",
+   CurrentValue = 0.5,
+   Flag = "AimbotSmoothnessSlider",
+   Callback = function(Value)
+        AimbotSmoothness = Value
+   end,
+})
+
+-- Enhanced Aimbot Functions
+local function GetClosestPlayerToCursor()
+    local closestPlayer = nil
+    local shortestDistance = AimbotFOV
+    local camera = workspace.CurrentCamera
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local humanoid = character:FindFirstChild("Humanoid")
+            local head = character:FindFirstChild("Head")
+            
+            if humanoid and humanoid.Health > 0 and head then
+                -- Team check
+                if AimbotTeamCheck and player.Team == LocalPlayer.Team then
+                    continue
+                end
+                
+                -- Calculate screen position
+                local headPos, onScreen = camera:WorldToViewportPoint(head.Position)
+                
+                if onScreen then
+                    local screenPos = Vector2.new(headPos.X, headPos.Y)
+                    local distanceFromMouse = (screenPos - mousePos).Magnitude
+                    local distanceFrom3D = (head.Position - HumanoidRootPart.Position).Magnitude
+                    
+                    -- Check if within FOV and closer than previous
+                    if distanceFrom3D < AimbotFOV and distanceFromMouse < shortestDistance then
+                        closestPlayer = player
+                        shortestDistance = distanceFromMouse
+                    end
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function EnableAimbot()
+    AimbotConnection = RunService.RenderStepped:Connect(function()
+        if not AimbotEnabled then return end
+        
+        local target = GetClosestPlayerToCursor()
+        
+        if target and target.Character then
+            local head = target.Character:FindFirstChild("Head")
+            
+            if head then
+                local camera = workspace.CurrentCamera
+                local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
+                
+                -- Smooth aiming
+                if AimbotSmoothness > 0 then
+                    camera.CFrame = camera.CFrame:Lerp(targetCFrame, 1 - AimbotSmoothness)
+                else
+                    camera.CFrame = targetCFrame
+                end
+            end
+        end
+    end)
+end
+
+local function DisableAimbot()
+    if AimbotConnection then
+        AimbotConnection:Disconnect()
+        AimbotConnection = nil
+    end
+end
+
+-- Aimbot Toggle
+local AimbotToggle = VisualsTab:CreateToggle({
+   Name = "Aimbot",
+   CurrentValue = false,
+   Flag = "AimbotToggle",
+   Callback = function(Value)
+        AimbotEnabled = Value
+        
+        if AimbotEnabled then
+            EnableAimbot()
+            
+            Rayfield:Notify({
+               Title = "Aimbot Activated",
+               Content = "Auto-aiming at closest player to cursor!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableAimbot()
+            
+            Rayfield:Notify({
+               Title = "Aimbot Deactivated",
+               Content = "Aimbot disabled",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Team Check Toggle
+local TeamCheckToggle = VisualsTab:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = false,
+   Flag = "TeamCheckToggle",
+   Callback = function(Value)
+        AimbotTeamCheck = Value
+        
+        if AimbotTeamCheck then
+            Rayfield:Notify({
+               Title = "Team Check Enabled",
+               Content = "Won't aim at teammates!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+               Title = "Team Check Disabled",
+               Content = "Will aim at everyone!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- FUN TAB
+local FunSection = FunTab:CreateSection("Tools & Items")
+
+-- Tool Functions
+local function GiveSword()
+    -- Remove existing sword
+    local existingSword = Character:FindFirstChild("ClassicSword")
+    if existingSword then
+        existingSword:Destroy()
+    end
+    
+    -- Create sword
+    local sword = Instance.new("Tool")
+    sword.Name = "ClassicSword"
+    sword.RequiresHandle = true
+    
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(0.5, 4, 0.5)
+    handle.BrickColor = BrickColor.new("Medium stone grey")
+    handle.Material = Enum.Material.Metal
+    handle.Parent = sword
+    
+    -- Sword blade
+    local blade = Instance.new("Part")
+    blade.Name = "Blade"
+    blade.Size = Vector3.new(0.3, 3, 0.1)
+    blade.BrickColor = BrickColor.new("Light stone grey")
+    blade.Material = Enum.Material.Metal
+    blade.Parent = handle
+    
+    local weld = Instance.new("Weld")
+    weld.Part0 = handle
+    weld.Part1 = blade
+    weld.C0 = CFrame.new(0, 2, 0)
+    weld.Parent = handle
+    
+    -- Sword guard
+    local guard = Instance.new("Part")
+    guard.Name = "Guard"
+    guard.Size = Vector3.new(2, 0.2, 0.2)
+    guard.BrickColor = BrickColor.new("Dark stone grey")
+    guard.Material = Enum.Material.Metal
+    guard.Parent = handle
+    
+    local guardWeld = Instance.new("Weld")
+    guardWeld.Part0 = handle
+    guardWeld.Part1 = guard
+    guardWeld.C0 = CFrame.new(0, 0.5, 0)
+    guardWeld.Parent = handle
+    
+    sword.Parent = LocalPlayer.Backpack
+    
+    Rayfield:Notify({
+       Title = "Sword Equipped",
+       Content = "Classic sword added to inventory!",
+       Duration = 3,
+       Image = 4483362458,
+    })
+end
+
+local RainbowCarpet = nil
+local CarpetConnection = nil
+
+local function GiveRainbowCarpet()
+    -- Remove existing carpet
+    if RainbowCarpet then
+        RainbowCarpet:Destroy()
+        if CarpetConnection then
+            CarpetConnection:Disconnect()
+        end
+    end
+    
+    -- Create rainbow carpet
+    local carpet = Instance.new("Part")
+    carpet.Name = "RainbowCarpet"
+    carpet.Size = Vector3.new(6, 0.5, 6)
+    carpet.Material = Enum.Material.Neon
+    carpet.Anchored = true
+    carpet.CanCollide = true
+    carpet.TopSurface = Enum.SurfaceType.Smooth
+    carpet.BottomSurface = Enum.SurfaceType.Smooth
+    
+    -- Add pattern mesh
+    local mesh = Instance.new("BlockMesh")
+    mesh.Scale = Vector3.new(1, 0.2, 1)
+    mesh.Parent = carpet
+    
+    carpet.Parent = workspace
+    RainbowCarpet = carpet
+    
+    -- Rainbow effect
+    local hue = 0
+    CarpetConnection = RunService.Heartbeat:Connect(function()
+        if not RainbowCarpet or not HumanoidRootPart then return end
+        
+        -- Update position to follow player
+        RainbowCarpet.CFrame = CFrame.new(HumanoidRootPart.Position - Vector3.new(0, 3.5, 0))
+        
+        -- Rainbow color
+        hue = (hue + 1) % 360
+        RainbowCarpet.Color = Color3.fromHSV(hue / 360, 1, 1)
+    end)
+    
+    Rayfield:Notify({
+       Title = "Rainbow Carpet Spawned",
+       Content = "Flying carpet following you!",
+       Duration = 3,
+       Image = 4483362458,
+    })
+end
+
+local function RemoveRainbowCarpet()
+    if RainbowCarpet then
+        RainbowCarpet:Destroy()
+        RainbowCarpet = nil
+    end
+    if CarpetConnection then
+        CarpetConnection:Disconnect()
+        CarpetConnection = nil
+    end
+    
+    Rayfield:Notify({
+       Title = "Carpet Removed",
+       Content = "Rainbow carpet destroyed!",
+       Duration = 3,
+       Image = 4483362458,
+    })
+end
+
+-- Tools Dropdown
+local ToolsDropdown = FunTab:CreateDropdown({
+   Name = "Spawn Tools",
+   Options = {"Sword", "Rainbow Carpet"},
+   CurrentOption = {"Sword"},
+   MultipleOptions = false,
+   Flag = "ToolsDropdown",
+   Callback = function(Option)
+        if Option == "Sword" then
+            GiveSword()
+        elseif Option == "Rainbow Carpet" then
+            GiveRainbowCarpet()
+        end
+   end,
+})
+
+-- Remove Rainbow Carpet Button
+local RemoveCarpetButton = FunTab:CreateButton({
+   Name = "Remove Rainbow Carpet",
+   Callback = function()
+        RemoveRainbowCarpet()
+   end,
+})
+
+-- UNDERGROUND MODE BUTTON
+local UndergroundButton = FunTab:CreateButton({
+   Name = "Go Underground",
+   Callback = function()
+        if HumanoidRootPart then
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0, 15, 0)
+            
+            Rayfield:Notify({
+               Title = "Underground Mode",
+               Content = "You are now 15 studs underground!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- ENABLE CHAT HISTORY BUTTON
+local ChatHistoryButton = FunTab:CreateButton({
+   Name = "Enable Chat History",
+   Callback = function()
+        local success, err = pcall(function()
+            local TextChatService = game:GetService("TextChatService")
+            local ChatWindowConfiguration = TextChatService:FindFirstChild("ChatWindowConfiguration")
+            
+            if ChatWindowConfiguration then
+                ChatWindowConfiguration.Enabled = true
+            end
+            
+            -- Also try StarterGui method for older chat system
+            local StarterGui = game:GetService("StarterGui")
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+            
+            -- Try to enable chat input bar
+            local ChatInputBarConfiguration = TextChatService:FindFirstChild("ChatInputBarConfiguration")
+            if ChatInputBarConfiguration then
+                ChatInputBarConfiguration.Enabled = true
+            end
+        end)
+        
+        if success then
+            Rayfield:Notify({
+               Title = "Chat History Enabled",
+               Content = "Chat should now be visible!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+               Title = "Chat Enable Failed",
+               Content = "This game may not have disabled chat!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- CLICK TELEPORT SECTION
+local ClickTPSection = FunTab:CreateSection("Click Teleport")
+
+local function EnableClickTP()
+    ClickTPConnection = Mouse.Button1Down:Connect(function()
+        if not ClickTPEnabled then return end
+        
+        local target = Mouse.Target
+        if target and HumanoidRootPart then
+            -- Teleport to mouse position
+            HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
+            
+            -- Visual effect at teleport location
+            local effect = Instance.new("Part")
+            effect.Shape = Enum.PartType.Ball
+            effect.Size = Vector3.new(2, 2, 2)
+            effect.Material = Enum.Material.Neon
+            effect.Color = Color3.fromRGB(0, 255, 255)
+            effect.Anchored = true
+            effect.CanCollide = false
+            effect.Transparency = 0.5
+            effect.Position = Mouse.Hit.Position
+            effect.Parent = workspace
+            
+            -- Fade out effect
+            for i = 0.5, 1, 0.1 do
+                effect.Transparency = i
+                effect.Size = effect.Size + Vector3.new(0.5, 0.5, 0.5)
+                wait(0.05)
+            end
+            
+            effect:Destroy()
+        end
+    end)
+end
+
+local function DisableClickTP()
+    if ClickTPConnection then
+        ClickTPConnection:Disconnect()
+        ClickTPConnection = nil
+    end
+end
+
+-- Click TP Toggle
+local ClickTPToggle = FunTab:CreateToggle({
+   Name = "Click Teleport",
+   CurrentValue = false,
+   Flag = "ClickTPToggle",
+   Callback = function(Value)
+        ClickTPEnabled = Value
+        
+        if ClickTPEnabled then
+            EnableClickTP()
+            
+            Rayfield:Notify({
+               Title = "Click TP Activated",
+               Content = "Click anywhere to teleport!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            DisableClickTP()
+            
+            Rayfield:Notify({
+               Title = "Click TP Deactivated",
+               Content = "Click teleport disabled!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Coordinates Section
+local CoordinateSection = FunTab:CreateSection("Coordinates")
+
+-- Coordinate Display Function
+local function CreateCoordinateGui()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Remove existing coordinate GUI
+    local existingGui = playerGui:FindFirstChild("NicScriptCoordinates")
+    if existingGui then
+        existingGui:Destroy()
+    end
+    
+    -- Create ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "NicScriptCoordinates"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+    
+    -- Create Frame
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 250, 0, 100)
+    frame.Position = UDim2.new(0.5, -125, 0, 10)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    -- Add UICorner
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    -- Title Label
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 30)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "Coordinates"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.SourceSansBold
+    titleLabel.TextSize = 18
+    titleLabel.Parent = frame
+    
+    -- X Coordinate
+    local xLabel = Instance.new("TextLabel")
+    xLabel.Size = UDim2.new(1, -10, 0, 20)
+    xLabel.Position = UDim2.new(0, 5, 0, 35)
+    xLabel.BackgroundTransparency = 1
+    xLabel.Text = "X: 0"
+    xLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    xLabel.Font = Enum.Font.SourceSans
+    xLabel.TextSize = 16
+    xLabel.TextXAlignment = Enum.TextXAlignment.Left
+    xLabel.Parent = frame
+    
+    -- Y Coordinate
+    local yLabel = Instance.new("TextLabel")
+    yLabel.Size = UDim2.new(1, -10, 0, 20)
+    yLabel.Position = UDim2.new(0, 5, 0, 55)
+    yLabel.BackgroundTransparency = 1
+    yLabel.Text = "Y: 0"
+    yLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    yLabel.Font = Enum.Font.SourceSans
+    yLabel.TextSize = 16
+    yLabel.TextXAlignment = Enum.TextXAlignment.Left
+    yLabel.Parent = frame
+    
+    -- Z Coordinate
+    local zLabel = Instance.new("TextLabel")
+    zLabel.Size = UDim2.new(1, -10, 0, 20)
+    zLabel.Position = UDim2.new(0, 5, 0, 75)
+    zLabel.BackgroundTransparency = 1
+    zLabel.Text = "Z: 0"
+    zLabel.TextColor3 = Color3.fromRGB(100, 100, 255)
+    zLabel.Font = Enum.Font.SourceSans
+    zLabel.TextSize = 16
+    zLabel.TextXAlignment = Enum.TextXAlignment.Left
+    zLabel.Parent = frame
+    
+    CoordinateGui = screenGui
+    
+    -- Update coordinates
+    CoordinateConnection = RunService.Heartbeat:Connect(function()
+        if not CoordinateEnabled or not HumanoidRootPart then return end
+        
+        local pos = HumanoidRootPart.Position
+        xLabel.Text = string.format("X: %.2f", pos.X)
+        yLabel.Text = string.format("Y: %.2f", pos.Y)
+        zLabel.Text = string.format("Z: %.2f", pos.Z)
+    end)
+end
+
+local function RemoveCoordinateGui()
+    if CoordinateGui then
+        CoordinateGui:Destroy()
+        CoordinateGui = nil
+    end
+    if CoordinateConnection then
+        CoordinateConnection:Disconnect()
+        CoordinateConnection = nil
+    end
+end
+
+-- Coordinate Toggle
+local CoordinateToggle = FunTab:CreateToggle({
+   Name = "Show Coordinates",
+   CurrentValue = false,
+   Flag = "CoordinateToggle",
+   Callback = function(Value)
+        CoordinateEnabled = Value
+        
+        if CoordinateEnabled then
+            CreateCoordinateGui()
+            
+            Rayfield:Notify({
+               Title = "Coordinates Enabled",
+               Content = "Your position is now displayed!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            RemoveCoordinateGui()
+            
+            Rayfield:Notify({
+               Title = "Coordinates Disabled",
+               Content = "Coordinate display removed!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- INFO TAB
+local InfoSection = InfoTab:CreateSection("Script Information")
+
+InfoTab:CreateLabel("Nic Script v2.0 - Universal")
+InfoTab:CreateLabel("Made for Most Executors!")
+InfoTab:CreateLabel("Created by: Nic")
+
+local DiscordSection = InfoTab:CreateSection("Discord Server")
+
+-- Discord Link Button
+local DiscordButton = InfoTab:CreateButton({
+   Name = "Copy Discord Link",
+   Callback = function()
+        setclipboard("https://discord.gg/mtX7XD7epa")
+        
+        Rayfield:Notify({
+           Title = "Server Link Copied",
+           Content = "Discord link copied to clipboard!",
+           Duration = 3,
+           Image = 4483362458,
+        })
+   end,
+})
+
+-- Notification on load
+Rayfield:Notify({
+   Title = "Nic Script v2.0 Loaded",
+   Content = "All features ready to use!",
+   Duration = 5,
+   Image = 4483362458,
+})
