@@ -1,16 +1,16 @@
 --[[
     Nic Script - Universal Roblox Script
-    Version: 2.0
-    Features: Enhanced Aimbot, Tool ESP, Interaction ESP, and all previous features!
+    Version: 2.1
+    Updates: Player Teleport System and Fixed Tool Giver!
     UI Library: Rayfield
 ]]--
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Nic Script v2.0",
+   Name = "Nic Script v2.1",
    LoadingTitle = "Nic Script Loading...",
-   LoadingSubtitle = "KEYLESS",
+   LoadingSubtitle = "UNIVERSAL",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -119,6 +119,24 @@ local AimbotConnection = nil
 local AimbotFOV = 200
 local AimbotTeamCheck = false
 local AimbotSmoothness = 0.5
+
+-- Player Teleport Variables
+local SelectedPlayer = nil
+local PlayerList = {}
+
+-- Function to get all players
+local function GetPlayerList()
+    PlayerList = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(PlayerList, player.Name)
+        end
+    end
+    return PlayerList
+end
+
+-- Initial scan
+GetPlayerList()
 
 -- Detect if game uses JumpPower or JumpHeight
 local function SetJumpPower(value)
@@ -1493,22 +1511,34 @@ local TeamCheckToggle = VisualsTab:CreateToggle({
 -- FUN TAB
 local FunSection = FunTab:CreateSection("Tools & Items")
 
--- Tool Functions
+-- FIXED Tool Functions
 local function GiveSword()
-    -- Remove existing sword
-    local existingSword = Character:FindFirstChild("ClassicSword")
-    if existingSword then
-        existingSword:Destroy()
+    if not Character then return end
+    
+    -- Remove existing sword from both backpack and character
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item.Name == "ClassicSword" then
+            item:Destroy()
+        end
     end
+    
+    for _, item in pairs(Character:GetChildren()) do
+        if item.Name == "ClassicSword" and item:IsA("Tool") then
+            item:Destroy()
+        end
+    end
+    
+    wait(0.1)
     
     -- Create sword
     local sword = Instance.new("Tool")
     sword.Name = "ClassicSword"
     sword.RequiresHandle = true
+    sword.CanBeDropped = true
     
     local handle = Instance.new("Part")
     handle.Name = "Handle"
-    handle.Size = Vector3.new(0.5, 4, 0.5)
+    handle.Size = Vector3.new(0.4, 4, 0.4)
     handle.BrickColor = BrickColor.new("Medium stone grey")
     handle.Material = Enum.Material.Metal
     handle.Parent = sword
@@ -1519,6 +1549,7 @@ local function GiveSword()
     blade.Size = Vector3.new(0.3, 3, 0.1)
     blade.BrickColor = BrickColor.new("Light stone grey")
     blade.Material = Enum.Material.Metal
+    blade.CanCollide = false
     blade.Parent = handle
     
     local weld = Instance.new("Weld")
@@ -1533,6 +1564,7 @@ local function GiveSword()
     guard.Size = Vector3.new(2, 0.2, 0.2)
     guard.BrickColor = BrickColor.new("Dark stone grey")
     guard.Material = Enum.Material.Metal
+    guard.CanCollide = false
     guard.Parent = handle
     
     local guardWeld = Instance.new("Weld")
@@ -1541,6 +1573,7 @@ local function GiveSword()
     guardWeld.C0 = CFrame.new(0, 0.5, 0)
     guardWeld.Parent = handle
     
+    -- Make sure it equips properly
     sword.Parent = LocalPlayer.Backpack
     
     Rayfield:Notify({
@@ -1699,6 +1732,80 @@ local ChatHistoryButton = FunTab:CreateButton({
                Image = 4483362458,
             })
         end
+   end,
+})
+
+-- PLAYER TELEPORT SECTION
+local PlayerTPSection = FunTab:CreateSection("Player Teleport")
+
+-- Player Dropdown
+local PlayerDropdown = FunTab:CreateDropdown({
+   Name = "Select Player",
+   Options = PlayerList,
+   CurrentOption = {PlayerList[1] or "No Players"},
+   MultipleOptions = false,
+   Flag = "PlayerDropdown",
+   Callback = function(Option)
+        SelectedPlayer = Option
+   end,
+})
+
+-- Teleport to Player Button
+local TPToPlayerButton = FunTab:CreateButton({
+   Name = "TP to Selected Player",
+   Callback = function()
+        if not SelectedPlayer then
+            Rayfield:Notify({
+               Title = "No Player Selected",
+               Content = "Please select a player first!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+            return
+        end
+        
+        local targetPlayer = Players:FindFirstChild(SelectedPlayer)
+        
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 2, 0)
+            
+            Rayfield:Notify({
+               Title = "Teleported",
+               Content = "Teleported to " .. SelectedPlayer .. "!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        else
+            Rayfield:Notify({
+               Title = "Teleport Failed",
+               Content = "Player not found or has no character!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+        end
+   end,
+})
+
+-- Refresh Player List Button
+local RefreshListButton = FunTab:CreateButton({
+   Name = "Refresh List",
+   Callback = function()
+        -- Get updated player list
+        local newPlayerList = GetPlayerList()
+        
+        -- Update the dropdown (note: Rayfield doesn't have a built-in update method, so we notify)
+        PlayerList = newPlayerList
+        
+        Rayfield:Notify({
+           Title = "List Refreshed",
+           Content = "Found " .. #PlayerList .. " players!",
+           Duration = 3,
+           Image = 4483362458,
+        })
+        
+        -- Destroy and recreate the dropdown
+        Rayfield:Destroy()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
    end,
 })
 
@@ -1910,8 +2017,8 @@ local CoordinateToggle = FunTab:CreateToggle({
 -- INFO TAB
 local InfoSection = InfoTab:CreateSection("Script Information")
 
-InfoTab:CreateLabel("Nic Script v2.0 - Universal")
-InfoTab:CreateLabel("Made for Most Executors!")
+InfoTab:CreateLabel("Nic Script v2.1 - Universal")
+InfoTab:CreateLabel("Made for Roblox Executors")
 InfoTab:CreateLabel("Created by: Nic")
 
 local DiscordSection = InfoTab:CreateSection("Discord Server")
@@ -1933,8 +2040,8 @@ local DiscordButton = InfoTab:CreateButton({
 
 -- Notification on load
 Rayfield:Notify({
-   Title = "Nic Script v2.0 Loaded",
-   Content = "All features ready to use!",
+   Title = "Nic Script v2.1 Loaded",
+   Content = "Scanned " .. #PlayerList .. " players in server!",
    Duration = 5,
    Image = 4483362458,
 })
