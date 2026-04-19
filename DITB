@@ -1,5 +1,5 @@
--- DITB HUB - Combined Script
--- Made by: Nic & TexRBLX
+-- DITB HUB - Combined with my old DITB scripts 
+-- Made by: Nic
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -14,7 +14,7 @@ local Window = Rayfield:CreateWindow({
     Name = "▪️ DITB HUB ▪️",
     Icon = 0,
     LoadingTitle = "DITB HUB",
-    LoadingSubtitle = "Made by: Nic & TexRBLX",
+    LoadingSubtitle = "Made by: Nic",
     Theme = "Default",
     DisableRayfieldPrompts = false,
     DisableBuildWarnings = false,
